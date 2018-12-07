@@ -1344,6 +1344,11 @@ class Transport(threading.Thread, ClosingContextManager):
             return None
         return self.auth_handler.banner
 
+    def get_auth_handler(self):
+        if not self.auth_handler:
+            self.auth_handler = AuthHandler(self)
+        return self.auth_handler
+
     def auth_none(self, username):
         """
         Try to authenticate to the server using no authentication at all.
@@ -1368,9 +1373,8 @@ class Transport(threading.Thread, ClosingContextManager):
         if (not self.active) or (not self.initial_kex_done):
             raise SSHException("No existing session")
         my_event = threading.Event()
-        self.auth_handler = AuthHandler(self)
-        self.auth_handler.auth_none(username, my_event)
-        return self.auth_handler.wait_for_response(my_event)
+        self.get_auth_handler().auth_none(username, my_event)
+        return self.get_auth_handler().wait_for_response(my_event)
 
     def auth_password(self, username, password, event=None, fallback=True):
         """
@@ -1427,13 +1431,12 @@ class Transport(threading.Thread, ClosingContextManager):
             my_event = threading.Event()
         else:
             my_event = event
-        self.auth_handler = AuthHandler(self)
-        self.auth_handler.auth_password(username, password, my_event)
+        self.get_auth_handler().auth_password(username, password, my_event)
         if event is not None:
             # caller wants to wait for event themselves
             return []
         try:
-            return self.auth_handler.wait_for_response(my_event)
+            return self.get_auth_handler().wait_for_response(my_event)
         except BadAuthenticationType as e:
             # if password auth isn't allowed, but keyboard-interactive *is*,
             # try to fudge it
@@ -1499,12 +1502,11 @@ class Transport(threading.Thread, ClosingContextManager):
             my_event = threading.Event()
         else:
             my_event = event
-        self.auth_handler = AuthHandler(self)
-        self.auth_handler.auth_publickey(username, key, my_event)
+        self.get_auth_handler().auth_publickey(username, key, my_event)
         if event is not None:
             # caller wants to wait for event themselves
             return []
-        return self.auth_handler.wait_for_response(my_event)
+        return self.get_auth_handler().wait_for_response(my_event)
 
     def auth_interactive(self, username, handler, submethods=""):
         """
@@ -1553,11 +1555,10 @@ class Transport(threading.Thread, ClosingContextManager):
             # we should never try to authenticate unless we're on a secure link
             raise SSHException("No existing session")
         my_event = threading.Event()
-        self.auth_handler = AuthHandler(self)
-        self.auth_handler.auth_interactive(
+        self.get_auth_handler().auth_interactive(
             username, handler, my_event, submethods
         )
-        return self.auth_handler.wait_for_response(my_event)
+        return self.get_auth_handler().wait_for_response(my_event)
 
     def auth_interactive_dumb(self, username, handler=None, submethods=""):
         """
@@ -1602,11 +1603,10 @@ class Transport(threading.Thread, ClosingContextManager):
             # we should never try to authenticate unless we're on a secure link
             raise SSHException("No existing session")
         my_event = threading.Event()
-        self.auth_handler = AuthHandler(self)
-        self.auth_handler.auth_gssapi_with_mic(
+        self.get_auth_handler().auth_gssapi_with_mic(
             username, gss_host, gss_deleg_creds, my_event
         )
-        return self.auth_handler.wait_for_response(my_event)
+        return self.get_auth_handler().wait_for_response(my_event)
 
     def auth_gssapi_keyex(self, username):
         """
@@ -1627,9 +1627,8 @@ class Transport(threading.Thread, ClosingContextManager):
             # we should never try to authenticate unless we're on a secure link
             raise SSHException("No existing session")
         my_event = threading.Event()
-        self.auth_handler = AuthHandler(self)
-        self.auth_handler.auth_gssapi_keyex(username, my_event)
-        return self.auth_handler.wait_for_response(my_event)
+        self.get_auth_handler().auth_gssapi_keyex(username, my_event)
+        return self.get_auth_handler().wait_for_response(my_event)
 
     def set_log_channel(self, name):
         """
